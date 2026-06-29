@@ -116,6 +116,7 @@ cat > "$PLAYBOOK_FILE" <<'PLAYBOOK_EOF'
       community.general.pacman:
         name:
           - base-devel
+          - go
           - git
         state: present
       when: yay_check.rc != 0
