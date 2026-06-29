@@ -150,6 +150,7 @@ cat > "$PLAYBOOK_FILE" <<'PLAYBOOK_EOF'
         name: docker
         enabled: true
         state: started
+      failed_when: false
 
     - name: Добавить пользователя в группу docker
       become: true
@@ -164,6 +165,7 @@ cat > "$PLAYBOOK_FILE" <<'PLAYBOOK_EOF'
         name: libvirtd
         enabled: true
         state: started
+      failed_when: false
 
     - name: Добавить пользователя в группу libvirt
       become: true
