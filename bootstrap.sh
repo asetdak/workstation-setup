@@ -89,7 +89,6 @@ cat > "$PLAYBOOK_FILE" <<'PLAYBOOK_EOF'
       - anydesk-bin
       - claude-desktop-bin
       - winbox
-      - deskreen
       - bongo-cat
       - steam-native-runtime
 
