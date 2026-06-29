@@ -1,0 +1,183 @@
+---
+# ============================================================
+#  setup.yml — слепок личного рабочего окружения Manjaro KDE
+#  Запуск (локально на новой машине):
+#    ansible-galaxy collection install community.general kewlfft.aur
+#    ansible-playbook setup.yml --ask-become-pass
+#  Гонять под обычным пользователем (НЕ под root): yay требует
+#  непривилегированного пользователя, sudo поднимается точечно.
+# ============================================================
+
+- name: Setup personal workstation (Manjaro KDE)
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    # Имя пользователя, под которым работаешь (для групп docker/libvirt).
+    # ansible_user_id берётся автоматически = текущий пользователь.
+    target_user: "{{ ansible_user_id }}"
+
+    # ---- Пакеты из официальных репозиториев (pacman) ----
+    pacman_packages:
+      # базовые рабочие
+      - git
+      # терминал и утилиты
+      - htop
+      - fastfetch
+      - fzf
+      - micro
+      - nano-syntax-highlighting
+      - 7zip
+      - rsync
+      - wget
+      # сеть / VPN / удалёнка (профиль сетевика)
+      - nmap
+      - mtr
+      - traceroute
+      - wireguard-tools
+      - openssh
+      - sshfs
+      - filezilla
+      - freerdp
+      - networkmanager-l2tp
+      - networkmanager-openvpn
+      - networkmanager-openconnect
+      - networkmanager-vpnc
+      # виртуализация
+      - qemu-full
+      - virt-manager
+      - virt-viewer
+      - libvirt
+      - edk2-ovmf
+      - dnsmasq
+      - vde2
+      - openbsd-netcat
+      # контейнеры
+      - docker
+      - docker-compose
+      # языки и разработка
+      - code
+      - nodejs-lts-iron
+      - npm
+      - yarn
+      - nvm
+      - python-pip
+      - python-virtualenv
+      - pyenv
+      # софт и приложения
+      - firefox
+      - google-chrome
+      - qbittorrent
+      - telegram-desktop
+      - discord
+      - libreoffice-still
+      - onlyoffice-desktopeditors
+      - okular
+      - flameshot
+      - spectacle
+      - timeshift
+
+    # ---- Пакеты из AUR (через yay, от обычного пользователя) ----
+    aur_packages:
+      - anydesk-bin
+      - claude-desktop-bin
+      - winbox
+      - deskreen
+      - bongo-cat
+      - steam-native-runtime
+
+  tasks:
+
+    # --- 1. Обновление базы пакетов ---
+    - name: Обновить базу pacman
+      become: true
+      community.general.pacman:
+        update_cache: true
+
+    # --- 2. Официальные пакеты ---
+    - name: Установить пакеты из официальных репозиториев
+      become: true
+      community.general.pacman:
+        name: "{{ pacman_packages }}"
+        state: present
+
+    # --- 3. AUR-хелпер yay (на случай чистой системы без него) ---
+    - name: Проверить наличие yay
+      ansible.builtin.command: which yay
+      register: yay_check
+      changed_when: false
+      failed_when: false
+
+    - name: Установить base-devel и git (нужны для сборки AUR)
+      become: true
+      community.general.pacman:
+        name:
+          - base-devel
+          - git
+        state: present
+      when: yay_check.rc != 0
+
+    - name: Склонировать и собрать yay из AUR (если отсутствует)
+      ansible.builtin.shell: |
+        cd /tmp
+        rm -rf yay
+        git clone https://aur.archlinux.org/yay.git
+        cd yay
+        makepkg -si --noconfirm
+      args:
+        creates: /usr/bin/yay
+      when: yay_check.rc != 0
+
+    # --- 4. AUR-пакеты (от обычного пользователя, НЕ root) ---
+    - name: Установить пакеты из AUR через yay
+      kewlfft.aur.aur:
+        name: "{{ aur_packages }}"
+        use: yay
+        state: present
+      become: false
+
+    # --- 5. Docker: служба + добавление в группу ---
+    - name: Включить и запустить службу docker
+      become: true
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Добавить пользователя в группу docker (работа без sudo)
+      become: true
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        groups: docker
+        append: true
+
+    # --- 6. Libvirt/KVM: служба + группа + сеть ---
+    - name: Включить и запустить libvirtd
+      become: true
+      ansible.builtin.systemd:
+        name: libvirtd
+        enabled: true
+        state: started
+
+    - name: Добавить пользователя в группу libvirt
+      become: true
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        groups: libvirt
+        append: true
+
+    - name: Включить автозапуск дефолтной сети libvirt
+      become: true
+      community.libvirt.virt_net:
+        name: default
+        autostart: true
+        state: active
+      failed_when: false
+
+  handlers: []
+
+# ============================================================
+#  После прогона: ВЫЙДИ из сессии и зайди заново (или ребут),
+#  чтобы подхватились группы docker и libvirt.
+# ============================================================
