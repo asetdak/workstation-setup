@@ -90,7 +90,6 @@ cat > "$PLAYBOOK_FILE" <<'PLAYBOOK_EOF'
       - claude-desktop-bin
       - winbox
       - bongo-cat
-      - steam-native-runtime
 
   tasks:
     - name: Обновить базу pacman
