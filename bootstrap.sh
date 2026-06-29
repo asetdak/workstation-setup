@@ -74,18 +74,18 @@ cat > "$PLAYBOOK_FILE" <<'PLAYBOOK_EOF'
       - python-virtualenv
       - pyenv
       - firefox
-      - google-chrome
       - qbittorrent
       - telegram-desktop
       - discord
       - libreoffice-still
-      - onlyoffice-desktopeditors
       - okular
       - flameshot
       - spectacle
       - timeshift
 
     aur_packages:
+      - google-chrome
+      - onlyoffice-desktopeditors
       - anydesk-bin
       - claude-desktop-bin
       - winbox
